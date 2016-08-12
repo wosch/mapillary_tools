@@ -9,7 +9,6 @@ Python Tools for Mapillary
 
 ## Installing on MacOSX
     sudo pip install -r requirements.txt
-    brew install pyexiv2
 
 ## Preprocessing
 Use these scripts to process your photos before uploading to improve the upload quality.

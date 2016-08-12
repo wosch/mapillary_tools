@@ -6,7 +6,6 @@ import datetime
 import json
 from lib.geo import normalize_bearing
 
-#TODO: replace exifread with pyexiv2
 
 def eval_frac(value):
     return float(value.num) / float(value.den)
@@ -103,7 +102,7 @@ class EXIF:
         Initialize EXIF object with FILE as filename or fileobj
         '''
         self.filename = filename
-        if type(filename)==str:
+        if type(filename) == str:
             with open(filename, 'rb') as fileobj:
                 self.tags = exifread.process_file(fileobj, details=details)
         else:
@@ -159,8 +158,8 @@ class EXIF:
         '''
         time_string = exif_datetime_fields()[0]
         capture_time, time_field = self._extract_alternative_fields(time_string, 0, str)
-        capture_time = capture_time.replace(" ","_")
-        capture_time = capture_time.replace(":","_")
+        capture_time = capture_time.replace(" ", "_")
+        capture_time = capture_time.replace(":", "_")
         capture_time = datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S')
         sub_sec = self.extract_subsec()
         capture_time = capture_time + datetime.timedelta(seconds=float(sub_sec)/1e6)
@@ -243,6 +242,14 @@ class EXIF:
         width, _ = self._extract_alternative_fields(['Image ImageWidth', 'EXIF ExifImageWidth'], -1, int)
         height, _ = self._extract_alternative_fields(['Image ImageLength', 'EXIF ExifImageLength'], -1, int)
         return width, height
+
+
+    def extract_image_description(self):
+        '''
+        Extract image description
+        '''
+        description, _ = self._extract_alternative_fields(['Image ImageDescription'], "{}", str)
+        return description
 
 
     def extract_lon_lat(self):

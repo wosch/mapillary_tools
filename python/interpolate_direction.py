@@ -1,8 +1,6 @@
  #!/usr/bin/python
 
-import os, sys, pyexiv2
-from pyexiv2.utils import make_fraction
-from lib.geo import compute_bearing, dms_to_decimal, offset_bearing
+import os, sys
 from lib.sequence import Sequence
 from lib.exifedit import ExifEdit
 
@@ -16,8 +14,6 @@ for each image, and writes the values to the EXIF of the image.
 An offset angele relative to the direction of movement may be given as an optional
 argument to compensate for a sidelooking camera. This angle should be positive for
 clockwise offset. eg. 90 for a rightlooking camera and 270 (or -90) for a left looking camera
-
-@attention: Requires pyexiv2; see install instructions at http://tilloy.net/dev/pyexiv2/
 @author: mprins
 @license: MIT
 '''
@@ -44,11 +40,10 @@ if __name__ == '__main__':
 
     # offset angle, relative to camera position, clockwise is positive
     offset_angle = 0
-    if len(sys.argv) == 3 :
+    if len(sys.argv) == 3:
         offset_angle = float(sys.argv[2])
 
     s = Sequence(path)
     bearings = s.interpolate_direction(offset_angle)
     for image_name, bearing in bearings.iteritems():
         write_direction_to_image(image_name, bearing)
-

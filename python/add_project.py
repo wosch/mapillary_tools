@@ -1,10 +1,11 @@
-import pyexiv2
 import sys
 import os
 import json
 import urllib
 import argparse
 from lib import io
+from lib.exifedit import ExifEdit
+from lib.exif import EXIF
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -37,7 +38,7 @@ if __name__ == '__main__':
 
     # log in, get the projects
     params = urllib.urlencode( {"email": MAPILLARY_EMAIL, "password": MAPILLARY_PASSWORD })
-    response =urllib.urlopen("https://a.mapillary.com/v1/u/login", params)
+    response = urllib.urlopen("https://a.mapillary.com/v1/u/login", params)
     response_read = response.read()
     resp = json.loads(response_read)
     projects = resp['projects']
@@ -51,7 +52,7 @@ if __name__ == '__main__':
             found = True
             project_key = project['key']
 
-    if not found :
+    if not found:
         for project in projects:
             print project['name']
         print "Could not find project name '%s' in your projects, exiting." % project_name
@@ -69,14 +70,17 @@ if __name__ == '__main__':
     num_file = len(file_list)
     for i, filepath in enumerate(file_list):
         base, filename = os.path.split(filepath)
-        io.progress(i+1, num_file)
-        exif = pyexiv2.ImageMetadata(filepath)
-        exif.read()
-        description_ = exif['Exif.Image.ImageDescription'].value
-        imgDesc = json.loads(description_)
-        if 'MAPSettingsProject' not in imgDesc or overwrite:
-            imgDesc['MAPSettingsProject'] = project_key
-            exif['Exif.Image.ImageDescription'].value = json.dumps(imgDesc)
-            exif.write()
+        exif = EXIF(filepath)
+        description_ = exif.extract_image_description()
+        exif_edit = ExifEdit(filepath)
+        try:
+            description_ = json.loads(description_)
+        except:
+            description_ = {}
+
+        if 'MAPSettingsProject' not in description_ or overwrite:
+            description_['MAPSettingsProject'] = project_key
+            exif_edit.add_image_description(description_)
+            exif_edit.write()
 
     print "Done, processed %s files" % len(file_list)

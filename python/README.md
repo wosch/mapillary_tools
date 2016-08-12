@@ -6,7 +6,6 @@ Python Tools for Mapillary
 * [exifread] []
 * [gpxpy] []
 * [PIL] []
-* [pyexiv2] []
 
 ## Installing on MacOSX
     sudo pip install -r requirements.txt
@@ -113,10 +112,10 @@ the Mapillary iOS or Android apps.
     python upload_with_preprocessing.py path-to-images/
 
 It runs in the following steps:
-    
+
 - Skip images that are potential duplicates (optional with --remove_duplicates)
-- Group images into sequences based on gps and time 
-- Interpolate compass angles for each sequence 
+- Group images into sequences based on gps and time
+- Interpolate compass angles for each sequence
 - Add Mapillary tags to the images
 - Upload the images
 
@@ -136,4 +135,3 @@ Script to download images using the Mapillary image search API. Downloads images
 [exifread]: https://pypi.python.org/pypi/ExifRead
 [gpxpy]: https://pypi.python.org/pypi/gpxpy
 [PIL]: https://pypi.python.org/pypi/Pillow/2.2.1
-[pyexiv2]: http://tilloy.net/dev/pyexiv2/

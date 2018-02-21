@@ -271,8 +271,8 @@ if __name__ == '__main__':
                                                              project_key,
                                                              secret_hash,
                                                              external_properties,
-                                                             make = make,
-                                                             model = model)
+                                                             make=make,
+                                                             model=model)
                             file_list.append(filepath)
                         else:
                             missing_groups.append(filepath)
@@ -316,44 +316,22 @@ if __name__ == '__main__':
                 total_uploads += len(file_list)
                 upload_file_list(file_list, params)
 
+                # Upload DONE file
+                s = Sequence(os.path.dirname(file_list[0]), check_exif=False)
+                if s.is_sequence_done(missing_groups):
+                    done_params = {"url": MAPILLARY_UPLOAD_URL,
+                                   "key": s3_bucket,
+                                   "permission": MAPILLARY_PERMISSION_HASH,
+                                   "signature": MAPILLARY_SIGNATURE_HASH,
+                                   "move_files": False}
+                    upload_done_file(done_params)
+                print("Done uploading sequence {}.".format(sequence_uuid))
+
     # A short summary of the uploads
     s = Sequence(path)
     lines = upload_summary(s.file_list, total_uploads, split_groups, duplicate_groups, missing_groups)
     print('\n========= Summary of your uploads ==============')
     print lines
     print("==================================================")
-
     print("You can now preview your uploads at http://www.mapillary.com/map/upload/im")
 
-    # Finalizing the upload by uploading done files for all sequence
-    if not skip_upload and secret_hash is None:
-        print("\nFinalizing upload will submit all successful uploads and ignore all failed and duplicates.")
-        print("If all files were marked as successful, everything is fine, just press 'y'.")
-
-        # ask 3 times if input is unclear
-        for i in range(3):
-            proceed = "y"
-            if not auto_done:
-                proceed = raw_input("Finalize upload? [y/n]: ")
-            if proceed in ["y", "Y", "yes", "Yes"]:
-                for s3_bucket in s3_bucket_list:
-                    # upload an empty DONE file for each sequence
-                    params = {"url": MAPILLARY_UPLOAD_URL,
-                              "key": s3_bucket,
-                              "permission": MAPILLARY_PERMISSION_HASH,
-                              "signature": MAPILLARY_SIGNATURE_HASH,
-                              "move_files": False}
-                    upload_done_file(params)
-                    print("Done uploading.")
-                break
-            elif proceed in ["n", "N", "no", "No"]:
-                print("Aborted. No files were submitted. Try again if you had failures.")
-                break
-            else:
-                if i==2:
-                    print("Aborted. No files were submitted. Try again if you had failures.")
-                else:
-                    print('Please answer y or n. Try again.')
-
-        # store the logs after finalizing
-        write_log(lines, path)

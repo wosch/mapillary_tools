@@ -315,3 +315,17 @@ class Sequence(object):
 
         return groups
 
+    def is_success(self, file_name):
+        '''
+        Check if an image has been uploaded successfully or not
+        '''
+        return 'success' in file_name
+
+    def is_sequence_done(self, skipped_list):
+        '''
+        Check if all images in the sequence have been uploaded.
+        '''
+        for f in self.file_list:
+            if not self.is_success(f) and f not in skipped_list:
+                return False
+        return True

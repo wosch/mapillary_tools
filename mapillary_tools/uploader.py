@@ -398,7 +398,11 @@ def authenticate_user(user_name):
     user_items = prompt_user_for_user_items(user_name)
     if not user_items:
         return None
-    config.create_config(GLOBAL_CONFIG_FILEPATH)
+    try:
+        config.create_config(GLOBAL_CONFIG_FILEPATH)
+    except Exception as e:
+        print("Failed to create authentication config file due to ".format(e))
+        sys.exit()
     config.update_config(
         GLOBAL_CONFIG_FILEPATH, user_name, user_items)
     return user_items
@@ -426,7 +430,11 @@ def get_master_key():
         create_config = raw_input(
             "Master upload key needs to be saved in the global Mapillary config file, which does not exist, create one now?")
         if create_config in ["y", "Y", "yes", "Yes"]:
-            config.create_config(GLOBAL_CONFIG_FILEPATH)
+            try:
+                config.create_config(GLOBAL_CONFIG_FILEPATH)
+            except Exception as e:
+                print("Failed to create authentication config file due to ".format(e))
+                sys.exit()
             master_key = set_master_key()
 
     return master_key
@@ -485,8 +493,10 @@ def upload_done_file(import_path, params):
     if os.path.exists(DONE_filepath):
         os.remove(DONE_filepath)
 
+
 def is_done_file(filename):
     return filename == "DONE"
+
 
 def upload_file(filepath, url, permission, signature, key=None, aws_key=None):
     '''

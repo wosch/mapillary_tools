@@ -390,6 +390,9 @@ def prompt_user_for_user_items(user_name):
 
 def authenticate_user(user_name):
     user_items = None
+    if 'APPDATA' in os.environ:
+        GLOBAL_CONFIG_FILEPATH = os.path.join(
+            os.environ['APPDATA'], 'mapillary', 'config')
     if os.path.isfile(GLOBAL_CONFIG_FILEPATH):
         global_config_object = config.load_config(GLOBAL_CONFIG_FILEPATH)
         if user_name in global_config_object.sections():
@@ -410,6 +413,9 @@ def authenticate_user(user_name):
 
 def get_master_key():
     master_key = ""
+    if 'APPDATA' in os.environ:
+        GLOBAL_CONFIG_FILEPATH = os.path.join(
+            os.environ['APPDATA'], 'mapillary', 'config')
     if os.path.isfile(GLOBAL_CONFIG_FILEPATH):
         global_config_object = config.load_config(GLOBAL_CONFIG_FILEPATH)
         if "MAPAdmin" in global_config_object.sections():

@@ -37,7 +37,7 @@ ME_URL = "https://a.mapillary.com/v3/me?client_id={}".format(CLIENT_ID)
 USER_UPLOAD_URL = "https://a.mapillary.com/v3/users/{}/upload_tokens?client_id={}"
 UPLOAD_STATUS_PAIRS = {"upload_success": "upload_failed",
                        "upload_failed": "upload_success"}
-GLOBAL_CONFIG_FILEPATH = os.path.join(
+UNIX_CONFIG_FILEPATH = os.path.join(
     os.path.expanduser('~'), ".config", "mapillary", 'config')
 
 
@@ -390,11 +390,12 @@ def prompt_user_for_user_items(user_name):
 
 def authenticate_user(user_name):
     user_items = None
+    config_filepath = UNIX_CONFIG_FILEPATH
     if 'APPDATA' in os.environ:
-        GLOBAL_CONFIG_FILEPATH = os.path.join(
+        config_filepath = os.path.join(
             os.environ['APPDATA'], 'mapillary', 'config')
-    if os.path.isfile(GLOBAL_CONFIG_FILEPATH):
-        global_config_object = config.load_config(GLOBAL_CONFIG_FILEPATH)
+    if os.path.isfile(config_filepath):
+        global_config_object = config.load_config(config_filepath)
         if user_name in global_config_object.sections():
             user_items = config.load_user(global_config_object, user_name)
             return user_items
@@ -402,22 +403,23 @@ def authenticate_user(user_name):
     if not user_items:
         return None
     try:
-        config.create_config(GLOBAL_CONFIG_FILEPATH)
+        config.create_config(config_filepath)
     except Exception as e:
         print("Failed to create authentication config file due to ".format(e))
         sys.exit()
     config.update_config(
-        GLOBAL_CONFIG_FILEPATH, user_name, user_items)
+        config_filepath, user_name, user_items)
     return user_items
 
 
 def get_master_key():
     master_key = ""
+    config_filepath = UNIX_CONFIG_FILEPATH
     if 'APPDATA' in os.environ:
-        GLOBAL_CONFIG_FILEPATH = os.path.join(
+        config_filepath = os.path.join(
             os.environ['APPDATA'], 'mapillary', 'config')
-    if os.path.isfile(GLOBAL_CONFIG_FILEPATH):
-        global_config_object = config.load_config(GLOBAL_CONFIG_FILEPATH)
+    if os.path.isfile(config_filepath):
+        global_config_object = config.load_config(config_filepath)
         if "MAPAdmin" in global_config_object.sections():
             admin_items = config.load_user(global_config_object, "MAPAdmin")
             if "MAPILLARY_SECRET_HASH" in admin_items:
@@ -437,7 +439,7 @@ def get_master_key():
             "Master upload key needs to be saved in the global Mapillary config file, which does not exist, create one now?")
         if create_config in ["y", "Y", "yes", "Yes"]:
             try:
-                config.create_config(GLOBAL_CONFIG_FILEPATH)
+                config.create_config(config_filepath)
             except Exception as e:
                 print("Failed to create authentication config file due to ".format(e))
                 sys.exit()
@@ -447,7 +449,11 @@ def get_master_key():
 
 
 def set_master_key():
-    config_object = config.load_config(GLOBAL_CONFIG_FILEPATH)
+    config_filepath = UNIX_CONFIG_FILEPATH
+    if 'APPDATA' in os.environ:
+        config_filepath = os.path.join(
+            os.environ['APPDATA'], 'mapillary', 'config')
+    config_object = config.load_config(config_filepath)
     section = "MAPAdmin"
     if section not in config_object.sections():
         config_object.add_section(section)
@@ -455,7 +461,7 @@ def set_master_key():
     if master_key != "":
         config_object = config.set_user_items(
             config_object, section, {"MAPILLARY_SECRET_HASH": master_key})
-        config.save_config(config_object, GLOBAL_CONFIG_FILEPATH)
+        config.save_config(config_object, config_filepath)
     return master_key
 
 

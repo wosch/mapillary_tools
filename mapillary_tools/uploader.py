@@ -1,20 +1,22 @@
-from exif_read import ExifRead
 import json
 import os
-import urllib2
 import urllib
-import httplib
-import socket
 import mimetypes
 import random
 import string
-from Queue import Queue
 import threading
 import time
-import config
 import getpass
 import sys
-import processing
+import requests
+import boto3
+from queue import Queue
+
+from retrying import retry
+
+import mapillary_tools.config as config
+import mapillary_tools.processing as processing
+from mapillary_tools.exif_read import ExifRead
 
 if os.getenv("AWS_S3_ENDPOINT", None) is None:
     MAPILLARY_UPLOAD_URL = "https://d22zcsn13kp53w.cloudfront.net/"
@@ -319,12 +321,8 @@ def get_upload_token(mail, pwd):
 
 
 def get_organization_key(user_key, organization_username, upload_token):
-
-    organization_key = None
-    call = ORGANIZATIONS_URL.format(user_key, CLIENT_ID)
-    req = urllib2.Request(call)
-    req.add_header('Authorization', 'Bearer {}'.format(upload_token))
-    resp = json.loads(urllib2.urlopen(req).read())
+    headers = {"Authorization": "Bearer " + upload_token}
+    resp = requests.get(ORGANIZATIONS_URL.format(user_key, CLIENT_ID), headers=headers).json()
 
     organization_usernames = []
     for org in resp:
@@ -342,11 +340,8 @@ def get_organization_key(user_key, organization_username, upload_token):
 
 
 def validate_organization_key(user_key, organization_key, upload_token):
-
-    call = ORGANIZATIONS_URL.format(user_key, CLIENT_ID)
-    req = urllib2.Request(call)
-    req.add_header('Authorization', 'Bearer {}'.format(upload_token))
-    resp = json.loads(urllib2.urlopen(req).read())
+    headers = {"Authorization": "Bearer " + upload_token}
+    resp = requests.get(ORGANIZATIONS_URL.format(user_key, CLIENT_ID), headers=headers).json()
     for org in resp:
         if org['key'] == organization_key:
             return
@@ -355,12 +350,8 @@ def validate_organization_key(user_key, organization_key, upload_token):
 
 
 def validate_organization_privacy(user_key, organization_key, private, upload_token):
-
-    call = ORGANIZATIONS_URL.format(user_key, CLIENT_ID)
-    req = urllib2.Request(call)
-    req.add_header('Authorization', 'Bearer {}'.format(upload_token))
-    resp = json.loads(urllib2.urlopen(req).read())
-
+    headers = {"Authorization": "Bearer " + upload_token}
+    resp = requests.get(ORGANIZATIONS_URL.format(user_key, CLIENT_ID), headers=headers).json()
     for org in resp:
         if org['key'] == organization_key:
             if (private and (('private_repository' not in org) or not org['private_repository'])) or (not private and (('public_repository' not in org) or not org['public_repository'])):
@@ -475,9 +466,7 @@ def set_master_key():
 
 def get_user_key(user_name):
     try:
-        req = urllib2.Request(USER_URL.format(
-            urllib2.quote(user_name), CLIENT_ID))
-        resp = json.loads(urllib2.urlopen(req).read())
+        resp = requests.get(USER_URL.format(user_name, CLIENT_ID)).json()
     except:
         return None
     if not resp or 'key' not in resp[0]:
@@ -487,144 +476,36 @@ def get_user_key(user_name):
 
 
 def get_user_hashes(user_key, upload_token):
-    user_permission_hash = ""
-    user_signature_hash = ""
-    req = urllib2.Request(USER_UPLOAD_URL.format(user_key, CLIENT_ID))
-    req.add_header('Authorization', 'Bearer {}'.format(upload_token))
-    resp = json.loads(urllib2.urlopen(req).read())
-    if 'images_hash' in resp:
-        user_signature_hash = resp['images_hash']
-    if 'images_policy' in resp:
-        user_permission_hash = resp['images_policy']
-
-    return (user_permission_hash, user_signature_hash)
+    headers = {"Authorization": "Bearer " + upload_token}
+    resp = requests.get(USER_UPLOAD_URL.format(user_key, CLIENT_ID), headers=headers).json()
+    return (resp['images_policy'], resp['images_hash'])
 
 
 def upload_done_file(url, permission, signature, key=None, aws_key=None):
-
-    # upload with many attempts to avoid issues
-    max_attempts = 100
-    s3_filename = "DONE"
-    if key is None:
-        s3_key = s3_filename
-    else:
-        s3_key = key + s3_filename
-
-    parameters = {"key": s3_key, "AWSAccessKeyId": aws_key, "acl": "private",
-                  "policy": permission, "signature": signature, "Content-Type": "image/jpeg"}
-
-    encoded_string = ''
-
-    data, headers = encode_multipart(
-        parameters, {'file': {'filename': s3_filename, 'content': encoded_string}})
-
-    for attempt in range(max_attempts):
-
-        # Initialize response before each attempt
-        response = None
-
-        try:
-            request = urllib2.Request(url, data=data, headers=headers)
-            response = urllib2.urlopen(request)
-            break  # attempts
-        except urllib2.HTTPError as e:
-            print("HTTP error: {} on {}, will attempt upload again for {} more times".format(
-                e, s3_filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except urllib2.URLError as e:
-            print("URL error: {} on {}, will attempt upload again for {} more times".format(
-                e, s3_filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except httplib.HTTPException as e:
-            print("HTTP exception: {} on {}, will attempt upload again for {} more times".format(
-                e, s3_filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except OSError as e:
-            print("OS error: {} on {}, will attempt upload again for {} more times".format(
-                e, s3_filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except socket.timeout as e:
-            # Specific timeout handling for Python 2.7
-            print("Timeout error: {0}, will attempt upload again for {} more times".format(
-                s3_filename, max_attempts - attempt - 1))
-        finally:
-            if response is not None:
-                response.close()
+    pass
 
 
+def _retry_upload_exception(exception):
+    return isinstance(exception, Exception)
+
+
+@retry(retry_on_exception=_retry_upload_exception, stop_max_attempt_number=5)
 def upload_file(filepath, max_attempts, url, permission, signature, key=None, aws_key=None):
-    '''
-    Upload file at filepath.
-
-    '''
-    if max_attempts == None:
-        max_attempts = MAX_ATTEMPTS
-
-    filename = os.path.basename(filepath)
-
-    s3_filename = filename
     try:
         s3_filename = ExifRead(filepath).exif_name()
     except:
-        pass
+        s3_filename = os.path.basename(filepath)
 
     filepath_keep_original = processing.processed_images_rootpath(filepath)
-    filepath_in = filepath
+
     if os.path.isfile(filepath_keep_original):
         filepath = filepath_keep_original
 
-    # add S3 'path' if given
-    if key is None:
-        s3_key = s3_filename
-    else:
-        s3_key = key + s3_filename
+    s3_key = s3_filename if key is None else key + s3_filename
 
-    parameters = {"key": s3_key, "AWSAccessKeyId": aws_key, "acl": "private",
-                  "policy": permission, "signature": signature, "Content-Type": "image/jpeg"}
+    s3 = boto3.resource('s3')
+    s3.Bucket("mtf-upload-images").upload_file(filepath, s3_key)
 
-    with open(filepath, "rb") as f:
-        encoded_string = f.read()
-
-    data, headers = encode_multipart(
-        parameters, {'file': {'filename': filename, 'content': encoded_string}})
-
-    for attempt in range(max_attempts):
-
-        # Initialize response before each attempt
-        response = None
-
-        try:
-            request = urllib2.Request(url, data=data, headers=headers)
-            response = urllib2.urlopen(request)
-            if response.getcode() == 204:
-                create_upload_log(filepath_in, "upload_success")
-            else:
-                create_upload_log(filepath_in, "upload_failed")
-            break  # attempts
-
-        except urllib2.HTTPError as e:
-            print("HTTP error: {} on {}, will attempt upload again for {} more times".format(
-                e, filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except urllib2.URLError as e:
-            print("URL error: {} on {}, will attempt upload again for {} more times".format(
-                e, filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except httplib.HTTPException as e:
-            print("HTTP exception: {} on {}, will attempt upload again for {} more times".format(
-                e, filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except OSError as e:
-            print("OS error: {} on {}, will attempt upload again for {} more times".format(
-                e, filename, max_attempts - attempt - 1))
-            time.sleep(5)
-        except socket.timeout as e:
-            # Specific timeout handling for Python 2.7
-            print("Timeout error: {} (retrying), will attempt upload again for {} more times".format(
-                filename, max_attempts - attempt - 1))
-        finally:
-            if response is not None:
-                response.close()
 
 
 def ascii_encode_dict(data):

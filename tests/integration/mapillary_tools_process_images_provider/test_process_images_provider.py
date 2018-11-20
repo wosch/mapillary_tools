@@ -1,19 +1,17 @@
 import os
-from shutil import copyfile, rmtree
-from time import sleep
-
 import requests
+from shutil import copyfile, rmtree
+
 from mapillary_messi.assertions.harvest_assertions import HarvestAssertion
-from mapillary_messi.db.kafka_base_driver import KafkaBaseDriver
 from mapillary_messi.db.psql_base_driver import PsqlMainV2BaseDriver
-from mapillary_messi.db.s3_base_driver import S3BaseDriver
 from mapillary_messi.fixtures.app_fixture import MapillaryAppFixture
 from mapillary_messi.fixtures.user_fixture import UserFixture
 from mapillary_messi.matchers.matcher import Eventually
 from mapillary_messi.models import User
 from testtools import TestCase
-from testtools.matchers import NotEquals, Equals
+from testtools.matchers import Equals
 
+from mapillary_tools.upload import upload
 from tests.utils import config
 
 UPLOADED_FILENAME = "V0370574.JPG"
@@ -56,10 +54,10 @@ class ProcessImagesProviderTestCase(TestCase):
         super(ProcessImagesProviderTestCase, self).setUp()
 
     def test_processed_images_are_uploaded_and_harvested(self):
-        copyfile(image_path, new_image_path)
+        upload(new_image_path)
         HarvestAssertion(self).assert_test_case(self.user.id)
 
-    def test_process_and_upload_multiple_sequences_images(self):
+    def _test_process_and_upload_multiple_sequences_images(self):
         image1_path = os.path.join(data_dir, 'data/{}'.format("DSC00497.JPG"))
         image2_path = os.path.join(data_dir, 'data/{}'.format("DSC00001.JPG"))
 

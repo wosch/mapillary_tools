@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-
 import sys
 import os
-import uploader
+
+import mapillary_tools.uploader as uploader
 import json
-from exif_aux import verify_mapillary_tag
+from mapillary_tools.exif_aux import verify_mapillary_tag
 
 
 def upload(import_path, verbose=False, skip_subfolders=False, video_file=None, number_threads=None, max_attempts=None):

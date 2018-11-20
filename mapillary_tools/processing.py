@@ -4,22 +4,22 @@ import os
 import json
 import time
 import sys
-import shutil
 import hashlib
 import base64
 from collections import OrderedDict
-from exif_read import ExifRead
-from exif_write import ExifEdit
-from exif_aux import verify_exif
-from geo import normalize_bearing, interpolate_lat_lon, gps_distance
-import config
-import uploader
 from dateutil.tz import tzlocal
-from gps_parser import get_lat_lon_time_from_gpx, get_lat_lon_time_from_nmea
-from gpx_from_gopro import gpx_from_gopro
-from gpx_from_blackvue import gpx_from_blackvue
-from gpx_from_exif import gpx_from_exif
 from tqdm import tqdm
+
+from mapillary_tools.exif_read import ExifRead
+from mapillary_tools.exif_write import ExifEdit
+from mapillary_tools.geo import normalize_bearing, interpolate_lat_lon, gps_distance
+from mapillary_tools.gps_parser import get_lat_lon_time_from_gpx, get_lat_lon_time_from_nmea
+from mapillary_tools.gpx_from_blackvue import gpx_from_blackvue
+from mapillary_tools.gpx_from_exif import gpx_from_exif
+from mapillary_tools.gpx_from_gopro import gpx_from_gopro
+from mapillary_tools.uploader import get_video_file_list, log_rootpath, get_success_upload_file_list, authenticate_user, \
+    get_master_key, get_user_key, get_organization_key, validate_organization_key, validate_organization_privacy, \
+    get_total_file_list
 
 STATUS_PAIRS = {"success": "failed",
                 "failed": "success"
@@ -171,7 +171,7 @@ def geotag_from_gopro_video(process_file_list,
 
     # for each video, create gpx trace and geotag the corresponding video
     # frames
-    gopro_videos = uploader.get_video_file_list(geotag_source_path)
+    gopro_videos = get_video_file_list(geotag_source_path)
     for gopro_video in gopro_videos:
         gopro_video_filename = os.path.basename(gopro_video).replace(
             ".mp4", "").replace(".MP4", "")
@@ -219,7 +219,7 @@ def geotag_from_blackvue_video(process_file_list,
 
     # for each video, create gpx trace and geotag the corresponding video
     # frames
-    blackvue_videos = uploader.get_video_file_list(geotag_source_path)
+    blackvue_videos = get_video_file_list(geotag_source_path)
     for blackvue_video in blackvue_videos:
         blackvue_video_filename = os.path.basename(blackvue_video).replace(
             ".mp4", "").replace(".MP4", "")
@@ -658,7 +658,7 @@ def get_process_status_file_list(import_path, process, status, skip_subfolders=F
 
 
 def process_status(file_path, process, status):
-    log_root = uploader.log_rootpath(file_path)
+    log_root = log_rootpath(file_path)
     process_status = os.path.join(log_root, process + "_" + status)
     return os.path.isfile(process_status)
 
@@ -679,13 +679,13 @@ def get_duplicate_file_list(import_path, skip_subfolders=False):
 
 
 def is_duplicate(file_path):
-    log_root = uploader.log_rootpath(file_path)
+    log_root = log_rootpath(file_path)
     duplicate_flag_path = os.path.join(log_root, "duplicate")
     return os.path.isfile(duplicate_flag_path)
 
 
 def preform_process(file_path, process, rerun=False):
-    log_root = uploader.log_rootpath(file_path)
+    log_root = log_rootpath(file_path)
     process_succes = os.path.join(log_root, process + "_success")
     upload_succes = os.path.join(log_root, "upload_success")
     preform = not os.path.isfile(upload_succes) and (
@@ -706,7 +706,7 @@ def get_failed_process_file_list(import_path, process):
 
 
 def failed_process(file_path, process):
-    log_root = uploader.log_rootpath(file_path)
+    log_root = log_rootpath(file_path)
     process_failed = os.path.join(log_root, process + "_failed")
     process_failed_true = os.path.isfile(process_failed)
     return process_failed_true
@@ -717,7 +717,7 @@ def processed_images_rootpath(filepath):
 
 
 def video_upload(video_file, import_path, verbose=False):
-    log_root = uploader.log_rootpath(video_file)
+    log_root = log_rootpath(video_file)
     import_paths = video_import_paths(video_file)
     if not os.path.isdir(import_path):
         os.makedirs(import_path)
@@ -727,7 +727,7 @@ def video_upload(video_file, import_path, verbose=False):
         print("Warning, {} has already been sampled into {}, please make sure all the previously sampled frames are deleted, otherwise the alignment might be incorrect".format(video_file, import_path))
     for video_import_path in import_paths:
         if os.path.isdir(video_import_path):
-            if len(uploader.get_success_upload_file_list(video_import_path)):
+            if len(get_success_upload_file_list(video_import_path)):
                 if verbose:
                     print("no")
                 return 1
@@ -735,7 +735,7 @@ def video_upload(video_file, import_path, verbose=False):
 
 
 def create_and_log_video_process(video_file, import_path):
-    log_root = uploader.log_rootpath(video_file)
+    log_root = log_rootpath(video_file)
     if not os.path.isdir(log_root):
         os.makedirs(log_root)
     # set the log flags for process
@@ -751,7 +751,7 @@ def create_and_log_video_process(video_file, import_path):
 
 
 def video_import_paths(video_file):
-    log_root = uploader.log_rootpath(video_file)
+    log_root = log_rootpath(video_file)
     if not os.path.isdir(log_root):
         return []
     log_process = os.path.join(
@@ -779,7 +779,7 @@ def create_and_log_process_in_list(process_file_list,
 
 def create_and_log_process(image, process, status, mapillary_description={}, verbose=False):
     # set log path
-    log_root = uploader.log_rootpath(image)
+    log_root = log_rootpath(image)
     # make all the dirs if not there
     if not os.path.isdir(log_root):
         os.makedirs(log_root)
@@ -831,7 +831,7 @@ def user_properties(user_name,
                     verbose=False):
     # basic
     try:
-        user_properties = uploader.authenticate_user(user_name)
+        user_properties = authenticate_user(user_name)
     except:
         print("Error, user authentication failed for user " + user_name)
         print("Make sure your user credentials are correct, user authentication is required for images to be uploaded to Mapillary.")
@@ -868,7 +868,7 @@ def user_properties_master(user_name,
                            verbose=False):
 
     try:
-        master_key = uploader.get_master_key()
+        master_key = get_master_key()
     except:
         print("Error, no master key found.")
         print("If you are a user, run the process script without the --master_upload, if you are a Mapillary employee, make sure you have the master key in your config file.")
@@ -877,7 +877,7 @@ def user_properties_master(user_name,
     user_properties = {"MAPVideoSecure": master_key}
     user_properties["MAPSettingsUsername"] = user_name
     try:
-        user_key = uploader.get_user_key(user_name)
+        user_key = get_user_key(user_name)
     except:
         print("Error, no user key obtained for the user name " + user_name +
               ", check if the user name is spelled correctly and if the master key is correct")
@@ -906,7 +906,7 @@ def process_organization(user_properties, organization_username=None, organizati
     user_upload_token = user_properties["user_upload_token"]
     if not organization_key and organization_username:
         try:
-            organization_key = uploader.get_organization_key(user_key,
+            organization_key = get_organization_key(user_key,
                                                              organization_username,
                                                              user_upload_token)
         except:
@@ -915,7 +915,7 @@ def process_organization(user_properties, organization_username=None, organizati
 
     # validate key
     try:
-        uploader.validate_organization_key(user_key,
+        validate_organization_key(user_key,
                                            organization_key,
                                            user_upload_token)
     except:
@@ -924,7 +924,7 @@ def process_organization(user_properties, organization_username=None, organizati
 
     # validate privacy
     try:
-        uploader.validate_organization_privacy(user_key,
+        validate_organization_privacy(user_key,
                                                organization_key,
                                                private,
                                                user_upload_token)
@@ -937,7 +937,7 @@ def process_organization(user_properties, organization_username=None, organizati
 
 def inform_processing_start(import_path, len_process_file_list, process, skip_subfolders=False):
 
-    total_file_list = uploader.get_total_file_list(
+    total_file_list = get_total_file_list(
         import_path, skip_subfolders)
     print("Running {} for {} images, skipping {} images.".format(process,
                                                                  len_process_file_list,
@@ -953,7 +953,7 @@ def load_geotag_points(process_file_list, verbose=False):
     directions = []
 
     for image in tqdm(process_file_list, desc="Loading geotag points"):
-        log_root = uploader.log_rootpath(image)
+        log_root = log_rootpath(image)
         geotag_data = get_geotag_data(log_root,
                                       image,
                                       verbose)

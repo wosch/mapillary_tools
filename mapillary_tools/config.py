@@ -1,5 +1,5 @@
 import os
-import ConfigParser
+from configparser import ConfigParser
 
 
 def load_config(config_path):

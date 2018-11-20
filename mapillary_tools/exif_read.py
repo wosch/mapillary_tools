@@ -1,10 +1,8 @@
-#!/usr/bin/env python
-
 import os
 import sys
 import exifread
 import datetime
-from geo import normalize_bearing
+from mapillary_tools.geo import normalize_bearing
 import uuid
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))

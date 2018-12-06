@@ -53,7 +53,7 @@ def process_sequence_properties(import_path,
     # sanity check if video file is passed
     if video_import_path and not os.path.isdir(video_import_path):
         print_error("Error, video path " + video_import_path +
-              " does not exist, exiting...")
+                    " does not exist, exiting...")
         sys.exit(1)
 
     # in case of video processing, adjust the import path
@@ -66,7 +66,7 @@ def process_sequence_properties(import_path,
     # basic check for all
     if not import_path or not os.path.isdir(import_path):
         print_error("Error, import directory " + import_path +
-              " does not exist, exiting...")
+                    " does not exist, exiting...")
         sys.exit(1)
 
     sequences = []
@@ -180,6 +180,14 @@ def process_sequence_properties(import_path,
                     open(sequence_process_success_path, "w").close()
                     open(sequence_process_success_path + "_" +
                          str(time.strftime("%Y_%m_%d_%H_%M_%S", time.gmtime())), "w").close()
+                    process = "duplicates"
+                    if "process_summary" in processing.log_counts:
+                        if process in processing.log_counts["process_summary"]:
+                            processing.log_counts["process_summary"][process] += 1
+                        else:
+                            processing.log_counts["process_summary"][process] = 1
+                    else:
+                        processing.log_counts["process_summary"] = {process: 1}
                 else:
                     prev_latlon = latlons[k]
                     prev_direction = directions[k]

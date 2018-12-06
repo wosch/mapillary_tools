@@ -680,8 +680,10 @@ def upload_file_list_manual(file_list, file_params, sequence_idx, number_threads
     # create uploader threads
     uploaders = [UploadThread(q) for i in range(number_threads)]
     process = "finalized"
-    if process not in processing.LOG_COUNTS["upload_summary"]:
-        processing.LOG_COUNTS["upload_summary"][process] = 0
+    if "upload_summary" not in processing.log_counts:
+        processing.log_counts["upload_summary"] = {process: 0}
+    elif process not in processing.log_counts["upload_summary"]:
+        processing.log_counts["upload_summary"][process] = 0
     # start uploaders as daemon threads that can be stopped (ctrl-c)
     try:
         print("Uploading {}. sequence with {} threads".format(
@@ -700,7 +702,7 @@ def upload_file_list_manual(file_list, file_params, sequence_idx, number_threads
         print("\nBREAK: Stopping upload.")
         sys.exit(1)
     upload_done_file(**file_params[filepath])
-    processing.LOG_COUNTS["upload_summary"][process] += len(file_list)
+    processing.log_counts["upload_summary"][process] += len(file_list)
     flag_finalization(file_list)
 
 
@@ -734,13 +736,16 @@ def create_upload_log(filepath, status):
         })
     status = status.split("_")[-1]
     process = status.split("_")[0]
-    if process in processing.LOG_COUNTS["upload_summary"]:
-        if status in processing.LOG_COUNTS["upload_summary"][process]:
-            processing.LOG_COUNTS["upload_summary"][process][status] += 1
+    if "upload_summary" in processing.log_counts:
+        if process in processing.log_counts["upload_summary"]:
+            if status in processing.log_counts["upload_summary"][process]:
+                processing.log_counts["upload_summary"][process][status] += 1
+            else:
+                processing.log_counts["upload_summary"][process][status] = 1
         else:
-            processing.LOG_COUNTS["upload_summary"][process][status] = 1
+            processing.log_counts["upload_summary"][process] = {status: 1}
     else:
-        processing.LOG_COUNTS["upload_summary"][process] = {status: 1}
+        processing.log_counts["upload_summary"] = {process: {status: 1}}
 
 
 # TODO change this, to summarize the upload.log and the processing.log

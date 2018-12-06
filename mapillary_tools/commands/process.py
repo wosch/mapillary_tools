@@ -7,7 +7,7 @@ from mapillary_tools.process_sequence_properties import process_sequence_propert
 from mapillary_tools.process_upload_params import process_upload_params
 from mapillary_tools.insert_MAPJson import insert_MAPJson
 from mapillary_tools.post_process import post_process
-from mapillary_tools.processing import LOG_COUNTS, save_json, load_json, TOTAL_FILES
+from mapillary_tools import processing
 
 
 class Command:
@@ -124,31 +124,38 @@ class Command:
         if "geotag_source" in vars_args and vars_args["geotag_source"] == 'blackvue_videos' and ("device_make" not in vars_args or ("device_make" in vars_args and not vars_args["device_make"])):
             vars_args["device_make"] = "Blackvue"
 
-        logs_counts_path = os.path.join(
+        log_counts_path = os.path.join(
             vars_args["import_path"], "mapillary_tools_progress_counts.json")
-        if os.path.isfile(logs_counts_path):
-            logs_counts = load_json(logs_counts_path)
+        if os.path.isfile(log_counts_path):
+            log_counts_ = processing.load_json(log_counts_path)
             if vars_args["rerun"]:
                 total_uploaded = 0
-                if "upload_summary" in logs_counts:
-                    if "finalized" in logs_counts["upload_summary"]:
-                        total_uploaded = logs_counts["upload_summary"]["finalized"]
-                    elif "upload" in logs_counts["upload_summary"] and "success" in logs_counts["upload_summary"]["upload"]:
-                        total_uploaded = logs_counts["upload_summary"]["upload"]["success"]
-                if "process_summary" in logs_counts:
-                    for process_step in logs_counts["process_summary"]:
-                        if "failed" in logs_counts["process_summary"][process_step]:
-                            logs_counts["process_summary"][process_step]["failed"] = 0
-                        if "success" in logs_counts["process_summary"][process_step]:
-                            logs_counts["process_summary"][process_step]["success"] = total_uploaded
-                    LOG_COUNTS = logs_counts
+                if "upload_summary" in log_counts_:
+                    if "finalized" in log_counts_["upload_summary"]:
+                        total_uploaded = log_counts_[
+                            "upload_summary"]["finalized"]
+                    elif "upload" in log_counts_["upload_summary"] and "success" in log_counts_["upload_summary"]["upload"]:
+                        total_uploaded = log_counts_[
+                            "upload_summary"]["upload"]["success"]
+                if "process_summary" in log_counts_:
+                    for process_step in log_counts_["process_summary"]:
+                        if "failed" in log_counts_["process_summary"][process_step]:
+                            del log_counts_[
+                                "process_summary"][process_step]["failed"]
+                        if "success" in log_counts_["process_summary"][process_step]:
+                            log_counts_[
+                                "process_summary"][process_step]["success"] = total_uploaded
+                        if process_step == "duplicates":
+                            del log_counts_["process_summary"][process_step]
+                    processing.log_counts = log_counts_
 
             else:
-                if "process_summary" in logs_counts:
-                    for process_step in logs_counts["process_summary"]:
-                        if "failed" in logs_counts["process_summary"][process_step]:
-                            logs_counts["process_summary"][process_step]["failed"] = 0
-                    LOG_COUNTS = logs_counts
+                if "process_summary" in log_counts_:
+                    for process_step in log_counts_["process_summary"]:
+                        if process_step != "duplicates" and "failed" in log_counts_["process_summary"][process_step]:
+                            del log_counts_[
+                                "process_summary"][process_step]["failed"]
+                    processing.log_counts = log_counts_
 
         process_user_properties(**({k: v for k, v in vars_args.iteritems()
                                     if k in inspect.getargspec(process_user_properties).args}))
@@ -172,7 +179,7 @@ class Command:
 
         post_process(**({k: v for k, v in vars_args.iteritems()
                          if k in inspect.getargspec(post_process).args}))
-        if not "total_images" in LOG_COUNTS:
-            LOG_COUNTS["total_images"] = TOTAL_FILES
-        save_json(LOG_COUNTS, os.path.join(
+        if not "total_images" in processing.log_counts:
+            processing.log_counts["total_images"] = processing.total_files
+        processing.save_json(processing.log_counts, os.path.join(
             vars_args["import_path"], "mapillary_tools_progress_counts.json"))

@@ -679,7 +679,9 @@ def upload_file_list_manual(file_list, file_params, sequence_idx, number_threads
         q.put((filepath, max_attempts, file_params[filepath]))
     # create uploader threads
     uploaders = [UploadThread(q) for i in range(number_threads)]
-
+    process = "finalized"
+    if process not in processing.LOG_COUNTS["upload_summary"]:
+        processing.LOG_COUNTS["upload_summary"][process] = 0
     # start uploaders as daemon threads that can be stopped (ctrl-c)
     try:
         print("Uploading {}. sequence with {} threads".format(
@@ -698,6 +700,7 @@ def upload_file_list_manual(file_list, file_params, sequence_idx, number_threads
         print("\nBREAK: Stopping upload.")
         sys.exit(1)
     upload_done_file(**file_params[filepath])
+    processing.LOG_COUNTS["upload_summary"][process] += len(file_list)
     flag_finalization(file_list)
 
 
@@ -731,13 +734,13 @@ def create_upload_log(filepath, status):
         })
     status = status.split("_")[-1]
     process = status.split("_")[0]
-    if process in LOG_COUNTS:
-        if status in LOG_COUNTS[process]:
-            LOG_COUNTS[process][status] += 1
+    if process in processing.LOG_COUNTS["upload_summary"]:
+        if status in processing.LOG_COUNTS["upload_summary"][process]:
+            processing.LOG_COUNTS["upload_summary"][process][status] += 1
         else:
-            LOG_COUNTS[process][status] = 1
+            processing.LOG_COUNTS["upload_summary"][process][status] = 1
     else:
-        LOG_COUNTS[process] = {status: 1}
+        processing.LOG_COUNTS["upload_summary"][process] = {status: 1}
 
 
 # TODO change this, to summarize the upload.log and the processing.log

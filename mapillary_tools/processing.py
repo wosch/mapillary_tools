@@ -27,7 +27,9 @@ from .error import print_error
 auxillary processing functions
 '''
 
-LOG_COUNTS = {}
+LOG_COUNTS = {"process_summary": {},
+              "upload_summary": {}}
+TOTAL_FILES = None
 
 
 def exif_time(filename):
@@ -626,6 +628,10 @@ def update_json(data, file_path, process):
 
 def get_process_file_list(import_path, process, rerun=False, verbose=False, skip_subfolders=False, root_dir=None):
 
+    count_total_files = False
+    if TOTAL_FILES == None:
+        count_total_files = True
+        TOTAL_FILES = 0
     if not root_dir:
         root_dir = import_path
 
@@ -633,15 +639,20 @@ def get_process_file_list(import_path, process, rerun=False, verbose=False, skip
     if skip_subfolders:
         process_file_list.extend(os.path.join(os.path.abspath(root_dir), file) for file in os.listdir(root_dir) if file.lower().endswith(
             ('jpg', 'jpeg', 'tif', 'tiff', 'pgm', 'pnm', 'gif')) and preform_process(os.path.join(root_dir, file), process, rerun))
+        if count_total_files:
+            TOTAL_FILES += len([file for file in os.listdir(root_dir) if file.lower(
+            ).endswith(('jpg', 'jpeg', 'tif', 'tiff', 'pgm', 'pnm', 'gif'))])
     else:
         for root, dir, files in os.walk(import_path):
             if os.path.join(".mapillary", "logs") in root:
                 continue
             process_file_list.extend(os.path.join(os.path.abspath(root), file) for file in files if preform_process(
                 os.path.join(root, file), process, rerun) and file.lower().endswith(('jpg', 'jpeg', 'tif', 'tiff', 'pgm', 'pnm', 'gif')))
+            if count_total_files:
+                TOTAL_FILES += len([file for file in files if file.lower().endswith(
+                    ('jpg', 'jpeg', 'tif', 'tiff', 'pgm', 'pnm', 'gif'))])
 
-    inform_processing_start(root_dir,
-                            len(process_file_list),
+    inform_processing_start(len(process_file_list),
                             process)
     return sorted(process_file_list)
 
@@ -829,13 +840,13 @@ def create_and_log_process(image, process, status, mapillary_description={}, ver
     ipc.send(
         process,
         {'image': image, 'status': status, 'description': mapillary_description})
-    if process in LOG_COUNTS:
-        if status in LOG_COUNTS[process]:
-            LOG_COUNTS[process][status] += 1
+    if process in LOG_COUNTS["process_summary"]:
+        if status in LOG_COUNTS["process_summary"][process]:
+            LOG_COUNTS["process_summary"][process][status] += 1
         else:
-            LOG_COUNTS[process][status] = 1
+            LOG_COUNTS["process_summary"][process][status] = 1
     else:
-        LOG_COUNTS[process] = {status: 1}
+        LOG_COUNTS["process_summary"][process] = {status: 1}
 
 
 def user_properties(user_name,
@@ -951,13 +962,11 @@ def process_organization(user_properties, organization_username=None, organizati
     return organization_key
 
 
-def inform_processing_start(import_path, len_process_file_list, process, skip_subfolders=False):
+def inform_processing_start(len_process_file_list, process, skip_subfolders=False):
 
-    total_file_list = uploader.get_total_file_list(
-        import_path, skip_subfolders)
     print("Running {} for {} images, skipping {} images.".format(process,
                                                                  len_process_file_list,
-                                                                 len(total_file_list) - len_process_file_list))
+                                                                 TOTAL_FILES - len_process_file_list))
 
 
 def load_geotag_points(process_file_list, verbose=False):

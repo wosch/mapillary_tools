@@ -7,7 +7,7 @@ from mapillary_tools.process_sequence_properties import process_sequence_propert
 from mapillary_tools.process_upload_params import process_upload_params
 from mapillary_tools.insert_MAPJson import insert_MAPJson
 from mapillary_tools.post_process import post_process
-from mapillary_tools.processing import LOG_COUNTS, save_json
+from mapillary_tools.processing import LOG_COUNTS, save_json, load_json, TOTAL_FILES
 
 
 class Command:
@@ -123,6 +123,20 @@ class Command:
         vars_args = vars(args)
         if "geotag_source" in vars_args and vars_args["geotag_source"] == 'blackvue_videos' and ("device_make" not in vars_args or ("device_make" in vars_args and not vars_args["device_make"])):
             vars_args["device_make"] = "Blackvue"
+
+        logs_counts_path = os.path.join(
+            vars_args["import_path"], "mapillary_tools_progress_counts.json")
+        if os.path.isfile(logs_counts_path):
+            logs_counts = load_json(logs_counts_path)
+            if vars_args["rerun"]:
+                pass
+            else:
+                if "process_summary" in logs_counts:
+                    for process_step in logs_counts["process_summary"]:
+                        if "failed" in logs_counts["process_summary"][process_step]:
+                            logs_counts["process_summary"][process_step]["failed"] = 0
+                    LOG_COUNTS = logs_counts
+
         process_user_properties(**({k: v for k, v in vars_args.iteritems()
                                     if k in inspect.getargspec(process_user_properties).args}))
 
@@ -145,5 +159,7 @@ class Command:
 
         post_process(**({k: v for k, v in vars_args.iteritems()
                          if k in inspect.getargspec(post_process).args}))
+        if not "total_images" in LOG_COUNTS:
+            LOG_COUNTS["total_images"] = TOTAL_FILES
         save_json(LOG_COUNTS, os.path.join(
             vars_args["import_path"], "mapillary_tools_progress_counts.json"))

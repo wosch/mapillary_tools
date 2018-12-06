@@ -129,7 +129,20 @@ class Command:
         if os.path.isfile(logs_counts_path):
             logs_counts = load_json(logs_counts_path)
             if vars_args["rerun"]:
-                pass
+                total_uploaded = 0
+                if "upload_summary" in logs_counts:
+                    if "finalized" in logs_counts["upload_summary"]:
+                        total_uploaded = logs_counts["upload_summary"]["finalized"]
+                    elif "upload" in logs_counts["upload_summary"] and "success" in logs_counts["upload_summary"]["upload"]:
+                        total_uploaded = logs_counts["upload_summary"]["upload"]["success"]
+                if "process_summary" in logs_counts:
+                    for process_step in logs_counts["process_summary"]:
+                        if "failed" in logs_counts["process_summary"][process_step]:
+                            logs_counts["process_summary"][process_step]["failed"] = 0
+                        if "success" in logs_counts["process_summary"][process_step]:
+                            logs_counts["process_summary"][process_step]["success"] = total_uploaded
+                    LOG_COUNTS = logs_counts
+
             else:
                 if "process_summary" in logs_counts:
                     for process_step in logs_counts["process_summary"]:

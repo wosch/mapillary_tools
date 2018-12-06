@@ -729,6 +729,15 @@ def create_upload_log(filepath, status):
             'image': filepath,
             'status': 'success' if status == 'upload_success' else 'failed',
         })
+    status = status.split("_")[-1]
+    process = status.split("_")[0]
+    if process in LOG_COUNTS:
+        if status in LOG_COUNTS[process]:
+            LOG_COUNTS[process][status] += 1
+        else:
+            LOG_COUNTS[process][status] = 1
+    else:
+        LOG_COUNTS[process] = {status: 1}
 
 
 # TODO change this, to summarize the upload.log and the processing.log

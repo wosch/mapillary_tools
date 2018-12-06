@@ -1,4 +1,5 @@
 import inspect
+import os
 from mapillary_tools.process_user_properties import process_user_properties
 from mapillary_tools.process_import_meta_properties import process_import_meta_properties
 from mapillary_tools.process_geotag_properties import process_geotag_properties
@@ -6,6 +7,7 @@ from mapillary_tools.process_sequence_properties import process_sequence_propert
 from mapillary_tools.process_upload_params import process_upload_params
 from mapillary_tools.insert_MAPJson import insert_MAPJson
 from mapillary_tools.post_process import post_process
+from mapillary_tools.processing import LOG_COUNTS, save_json
 
 
 class Command:
@@ -143,3 +145,5 @@ class Command:
 
         post_process(**({k: v for k, v in vars_args.iteritems()
                          if k in inspect.getargspec(post_process).args}))
+        save_json(LOG_COUNTS, os.path.join(
+            vars_args["import_path"], "mapillary_tools_progress_counts.json"))

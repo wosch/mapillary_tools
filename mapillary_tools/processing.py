@@ -23,12 +23,11 @@ from tqdm import tqdm
 from . import ipc
 from .error import print_error
 
-STATUS_PAIRS = {"success": "failed",
-                "failed": "success"
-                }
 '''
 auxillary processing functions
 '''
+
+LOG_COUNTS = {}
 
 
 def exif_time(filename):
@@ -111,26 +110,27 @@ def get_geotag_properties_from_exif(image, offset_angle=0.0, verbose=False):
         exif = ExifRead(image)
     except:
         print_error("Error, EXIF could not be read for image " +
-              image + ", geotagging process failed for this image since gps/time properties not read.")
+                    image + ", geotagging process failed for this image since gps/time properties not read.")
         return None
     # required tags
     try:
         lon, lat = exif.extract_lon_lat()
     except:
         print_error("Error, " + image +
-              " image latitude or longitude tag not in EXIF. Geotagging process failed for this image, since this is required information.")
+                    " image latitude or longitude tag not in EXIF. Geotagging process failed for this image, since this is required information.")
         return None
     if lat != None and lon != None:
         geotag_properties = {"MAPLatitude": lat}
         geotag_properties["MAPLongitude"] = lon
     else:
-        print_error("Error, " + image + " image latitude or longitude tag not in EXIF. Geotagging process failed for this image, since this is required information.")
+        print_error("Error, " + image +
+                    " image latitude or longitude tag not in EXIF. Geotagging process failed for this image, since this is required information.")
         return None
     try:
         timestamp = exif.extract_capture_time()
     except:
         print_error("Error, " + image +
-              " image capture time tag not in EXIF. Geotagging process failed for this image, since this is required information.")
+                    " image capture time tag not in EXIF. Geotagging process failed for this image, since this is required information.")
         return None
 
     try:
@@ -285,7 +285,8 @@ def geotag_from_gps_trace(process_file_list,
     sub_second_times = estimate_sub_second_time(process_file_list,
                                                 sub_second_interval)
     if not sub_second_times:
-        print_error("Error, capture times could not be estimated to sub second precision, images can not be geotagged.")
+        print_error(
+            "Error, capture times could not be estimated to sub second precision, images can not be geotagged.")
         create_and_log_process_in_list(process_file_list,
                                        "geotag_process"
                                        "failed",
@@ -308,7 +309,8 @@ def geotag_from_gps_trace(process_file_list,
     for image, capture_time in tqdm(zip(process_file_list,
                                         sub_second_times), desc="Inserting gps data into image EXIF"):
         if not capture_time:
-            print_error("Error, capture time could not be extracted for image " + image)
+            print_error(
+                "Error, capture time could not be extracted for image " + image)
             create_and_log_process(image,
                                    "geotag_process",
                                    "failed",
@@ -552,7 +554,8 @@ def get_final_mapillary_image_description(log_root, image, master_upload=False, 
     try:
         image_exif.write(filename=filename)
     except:
-        print_error("Error, image EXIF could not be written back for image " + image)
+        print_error(
+            "Error, image EXIF could not be written back for image " + image)
         return None
 
     return final_mapillary_image_description
@@ -806,7 +809,8 @@ def create_and_log_process(image, process, status, mapillary_description={}, ver
         except:
             # if the image description could not have been written to the
             # filesystem, log failed
-            print_error("Error, " + process + " logging failed for image " + image)
+            print_error("Error, " + process +
+                        " logging failed for image " + image)
             status = "failed"
 
     if status == "failed":
@@ -822,10 +826,16 @@ def create_and_log_process(image, process, status, mapillary_description={}, ver
                 print("Warning, {} in this run has failed, previously generated properties will be removed.".format(
                     process))
             os.remove(log_MAPJson)
-
     ipc.send(
         process,
-        { 'image': image, 'status': status, 'description': mapillary_description })
+        {'image': image, 'status': status, 'description': mapillary_description})
+    if process in LOG_COUNTS:
+        if status in LOG_COUNTS[process]:
+            LOG_COUNTS[process][status] += 1
+        else:
+            LOG_COUNTS[process][status] = 1
+    else:
+        LOG_COUNTS[process] = {status: 1}
 
 
 def user_properties(user_name,
@@ -886,7 +896,7 @@ def user_properties_master(user_name,
         user_key = uploader.get_user_key(user_name)
     except:
         print_error("Error, no user key obtained for the user name " + user_name +
-              ", check if the user name is spelled correctly and if the master key is correct")
+                    ", check if the user name is spelled correctly and if the master key is correct")
         return None
     if user_key:
         user_properties['MAPSettingsUserKey'] = user_key
@@ -1124,5 +1134,6 @@ def get_images_geotags(process_file_list):
         if timestamp and (not lon or not lat):
             missing_geotags.append((image, timestamp))
         else:
-            print_error("Error image {} does not have captured time.".format(image))
+            print_error(
+                "Error image {} does not have captured time.".format(image))
     return geotags, missing_geotags

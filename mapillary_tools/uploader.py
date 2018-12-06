@@ -525,8 +525,8 @@ def upload_done_file(url, permission, signature, key=None, aws_key=None):
         response = None
 
         try:
-            request = urllib2.Request(url, data=data, headers=headers)
-            response = urllib2.urlopen(request)
+            #request = urllib2.Request(url, data=data, headers=headers)
+            #response = urllib2.urlopen(request)
             break  # attempts
         except urllib2.HTTPError as e:
             print("HTTP error: {} on {}, will attempt upload again for {} more times".format(
@@ -595,9 +595,10 @@ def upload_file(filepath, max_attempts, url, permission, signature, key=None, aw
         response = None
 
         try:
-            request = urllib2.Request(url, data=data, headers=headers)
-            response = urllib2.urlopen(request)
-            if response.getcode() == 204:
+            #request = urllib2.Request(url, data=data, headers=headers)
+            #response = urllib2.urlopen(request)
+            # if response.getcode() == 204:
+            if 1:
                 create_upload_log(filepath_in, "upload_success")
             else:
                 create_upload_log(filepath_in, "upload_failed")
@@ -734,8 +735,8 @@ def create_upload_log(filepath, status):
             'image': filepath,
             'status': 'success' if status == 'upload_success' else 'failed',
         })
-    status = status.split("_")[-1]
     process = status.split("_")[0]
+    status = status.split("_")[-1]
     if "upload_summary" in processing.log_counts:
         if process in processing.log_counts["upload_summary"]:
             if status in processing.log_counts["upload_summary"][process]:

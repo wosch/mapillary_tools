@@ -139,14 +139,14 @@ class Command:
                             "upload_summary"]["upload"]["success"]
                 if "process_summary" in log_counts_:
                     for process_step in log_counts_["process_summary"]:
-                        if "failed" in log_counts_["process_summary"][process_step]:
-                            del log_counts_[
-                                "process_summary"][process_step]["failed"]
-                        if "success" in log_counts_["process_summary"][process_step]:
-                            log_counts_[
-                                "process_summary"][process_step]["success"] = total_uploaded
                         if process_step == "duplicates":
                             del log_counts_["process_summary"][process_step]
+                        elif "failed" in log_counts_["process_summary"][process_step]:
+                            del log_counts_[
+                                "process_summary"][process_step]["failed"]
+                        elif "success" in log_counts_["process_summary"][process_step]:
+                            log_counts_[
+                                "process_summary"][process_step]["success"] = total_uploaded
                     processing.log_counts = log_counts_
 
             else:

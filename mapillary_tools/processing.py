@@ -1150,3 +1150,44 @@ def get_images_geotags(process_file_list):
             print_error(
                 "Error image {} does not have captured time.".format(image))
     return geotags, missing_geotags
+
+
+def read_count_log(import_path, rerun=False):
+    log_counts_path = os.path.join(
+        import_path, "mapillary_tools_progress_counts.json")
+    if os.path.isfile(log_counts_path):
+        global log_counts
+        log_counts = load_json(log_counts_path)
+        if rerun:
+            total_uploaded = 0
+            if "upload_summary" in log_counts:
+                if "finalized" in log_counts["upload_summary"]:
+                    total_uploaded = log_counts[
+                        "upload_summary"]["finalized"]
+                elif "upload" in log_counts["upload_summary"] and "success" in log_counts["upload_summary"]["upload"]:
+                    total_uploaded = log_counts[
+                        "upload_summary"]["upload"]["success"]
+            if "process_summary" in log_counts:
+                for process_step in log_counts["process_summary"]:
+                    if process_step == "duplicates":
+                        del log_counts["process_summary"][process_step]
+                    elif "failed" in log_counts["process_summary"][process_step]:
+                        del log_counts[
+                            "process_summary"][process_step]["failed"]
+                    elif "success" in log_counts["process_summary"][process_step]:
+                        log_counts[
+                            "process_summary"][process_step]["success"] = total_uploaded
+        else:
+            if "process_summary" in log_counts:
+                for process_step in log_counts["process_summary"]:
+                    if process_step != "duplicates" and "failed" in log_counts["process_summary"][process_step]:
+                        del log_counts[
+                            "process_summary"][process_step]["failed"]
+
+
+def write_count_log(import_path):
+    global log_counts, total_images
+    if not "total_images" in log_counts:
+        log_counts["total_images"] = total_files
+    save_json(log_counts, os.path.join(
+        import_path, "mapillary_tools_progress_counts.json"))

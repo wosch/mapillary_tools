@@ -1,8 +1,7 @@
 import inspect
 from mapillary_tools.upload import upload
 from mapillary_tools.post_process import post_process
-import os
-from mapillary_tools import processing
+from mapillary_tools.processing import read_count_log, write_count_log
 
 
 class Command:
@@ -38,45 +37,13 @@ class Command:
     def run(self, args):
 
         vars_args = vars(args)
-        log_counts_path = os.path.join(
-            vars_args["import_path"], "mapillary_tools_progress_counts.json")
-        if os.path.isfile(log_counts_path):
-            log_counts_ = processing.load_json(log_counts_path)
-            if vars_args["rerun"]:
-                total_uploaded = 0
-                if "upload_summary" in log_counts_:
-                    if "finalized" in log_counts_["upload_summary"]:
-                        total_uploaded = log_counts_[
-                            "upload_summary"]["finalized"]
-                    elif "upload" in log_counts_["upload_summary"] and "success" in log_counts_["upload_summary"]["upload"]:
-                        total_uploaded = log_counts_[
-                            "upload_summary"]["upload"]["success"]
-                if "process_summary" in log_counts_:
-                    for process_step in log_counts_["process_summary"]:
-                        if process_step == "duplicates":
-                            del log_counts_["process_summary"][process_step]
-                        elif "failed" in log_counts_["process_summary"][process_step]:
-                            del log_counts_[
-                                "process_summary"][process_step]["failed"]
-                        elif "success" in log_counts_["process_summary"][process_step]:
-                            log_counts_[
-                                "process_summary"][process_step]["success"] = total_uploaded
-                    processing.log_counts = log_counts_
-
-            else:
-                if "process_summary" in log_counts_:
-                    for process_step in log_counts_["process_summary"]:
-                        if process_step != "duplicates" and "failed" in log_counts_["process_summary"][process_step]:
-                            del log_counts_[
-                                "process_summary"][process_step]["failed"]
-                    processing.log_counts = log_counts_
+        read_count_log(**({k: v for k, v in vars_args.iteritems()
+                           if k in inspect.getargspec(read_count_log).args}))
 
         upload(**({k: v for k, v in vars_args.iteritems()
                    if k in inspect.getargspec(upload).args}))
 
         post_process(**({k: v for k, v in vars_args.iteritems()
                          if k in inspect.getargspec(post_process).args}))
-        if not "total_images" in processing.log_counts:
-            processing.log_counts["total_images"] = processing.total_files
-        processing.save_json(processing.log_counts, os.path.join(
-            vars_args["import_path"], "mapillary_tools_progress_counts.json"))
+        write_count_log(**({k: v for k, v in vars_args.iteritems()
+                            if k in inspect.getargspec(write_count_log).args}))

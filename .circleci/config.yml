@@ -1,0 +1,18 @@
+version: 2.1
+jobs:
+  build:
+    macos:
+      xcode: 10.1.0
+    steps:
+    - checkout
+    - run:
+        name: Build the app
+        command: script/build
+    - store_artifacts:
+        path: publish/
+workflows:
+  version: 2.1
+  workflow:
+    jobs:
+    - build
+

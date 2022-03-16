@@ -10,7 +10,7 @@ from . import processing
 from . import uploader
 from .geo import compute_bearing, gps_distance, diff_bearing, gps_speed
 
-MAX_SEQUENCE_LENGTH = 500
+MAX_SEQUENCE_LENGTH = 125
 MAX_CAPTURE_SPEED = 45  # in m/s
 
 
